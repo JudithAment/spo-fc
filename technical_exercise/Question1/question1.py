@@ -1,49 +1,38 @@
 # Load packages
 import os
-import rioxarray as rxr
 import geopandas as gpd
-from rasterstats import zonal_stats
+import rioxarray as rxr
+import numpy as np
 
+# Define function
 def estimate_emissions(ef_path, risk_path, proj_path):
-    ef = rxr.open_rasterio(ef_path, masked=True).squeeze()
-    risk = rxr.open_rasterio(risk_path, masked=True).squeeze()
+    # Read project area
     project_area = gpd.read_file(proj_path)
 
-    # Test crs, extent, resolution
-    if (
-        (ef.rio.crs == risk.rio.crs)
-        & (ef.rio.bounds() == risk.rio.bounds())
-        & (ef.shape == risk.shape)
-        & (ef.rio.resolution() == risk.rio.resolution())
-    ):
-        # Calculate emissions
-        emissions = ef * risk
+    # Read ef & risk rasters masked by project area
+    ef_per_ha = rxr.open_rasterio(
+        ef_path,
+        masked=True,
+    ).rio.clip(project_area.geometry, project_area.crs, from_disk=True)
 
-        # Mean emissions in project area in CO2e/ha
-        mean_emissions = zonal_stats(
-            project_area,
-            emissions.values,
-            affine=emissions.rio.transform(),
-            stats="mean",
-        )[0]["mean"]
+    risk_ha_per_pixel = rxr.open_rasterio(
+        risk_path,
+        masked=True,
+    ).rio.clip(project_area.geometry, project_area.crs, from_disk=True)
 
-        # Get project area in ha
-        # project_area = project_area.to_crs("+proj=cea")  # this does not work..
+    # Calculate emissions per pixel
+    emissions_per_pixel = ef_per_ha * risk_ha_per_pixel
 
-        # Multiply area by mean emissions
-        est_emissions = project_area.area[0] / 1e4 * mean_emissions
+    # Sum emissions over project area
+    total_emissions = np.nansum(emissions_per_pixel.values)
 
-        return est_emissions
+    return total_emissions
 
-    else:
-        print(
-            "Risk and emissions maps do not have the same crs, extent, resolution or shape. Need to reproject or resample first"
-        )
-
-# Load data
+# Load data paths
 q1_path = os.path.join("technical_exercise", "Question1")
 ef_path = os.path.join(q1_path, "emissions_factor_strata.tif")
 risk_path = os.path.join(q1_path, "ptest_risk_map_vp_clipped.tif")
 proj_path = os.path.join(q1_path, "project_area.gpkg")
 
+# Run estimation
 estimate_emissions(ef_path, risk_path, proj_path)
