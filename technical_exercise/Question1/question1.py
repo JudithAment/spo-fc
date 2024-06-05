@@ -4,6 +4,7 @@ import geopandas as gpd
 import rioxarray as rxr
 import numpy as np
 
+
 # Define function
 def estimate_emissions(ef_path, risk_path, proj_path):
     # Read project area
@@ -28,6 +29,7 @@ def estimate_emissions(ef_path, risk_path, proj_path):
 
     return total_emissions
 
+
 # Load data paths
 q1_path = os.path.join("technical_exercise", "Question1")
 ef_path = os.path.join(q1_path, "emissions_factor_strata.tif")
@@ -35,4 +37,5 @@ risk_path = os.path.join(q1_path, "ptest_risk_map_vp_clipped.tif")
 proj_path = os.path.join(q1_path, "project_area.gpkg")
 
 # Run estimation
-estimate_emissions(ef_path, risk_path, proj_path)
+print(estimate_emissions(ef_path, risk_path, proj_path))
+#  1676.1728953037164
